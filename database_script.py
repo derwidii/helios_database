@@ -117,7 +117,7 @@ def get_sensor_values_with_ma(sensor_id, start_time=None, end_time=None):
 # Streamlit Interface
 st.image("https://raw.githubusercontent.com/derwidii/helios_database/main/HELIOS.png", width=100)
 
-st.text("DB_HOST:", os.environ.get("DB_HOST"))
+st.text(print("DB_HOST:", os.environ.get("DB_HOST")))
 st.title("HELIOS Testing Database Visualisation")
 st.text("App Creation Date: 2024-03-13")
 

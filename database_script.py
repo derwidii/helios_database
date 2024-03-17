@@ -7,10 +7,10 @@ from io import StringIO
 import os
 
 connection_config = {
-        "host": os.environ.get("DB_HOST"),
-        "user": os.environ.get("DB_USER"),
-        "password": os.environ.get("DB_PASSWORD"),
-        "database": os.environ.get("DB_NAME"),
+        "host": st.secrets["DB_HOST"],
+        "user": st.secrets["DB_USER"],
+        "password": st.secrets["DB_PASSWORD"]),
+        "database": st.secrets["DB_NAME"],
     }
 
 

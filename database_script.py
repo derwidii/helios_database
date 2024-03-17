@@ -6,11 +6,7 @@ from datetime import datetime
 from io import StringIO
 import os
 
-try:
-    from credentials_py import connection_config
-except ImportError:
-    # Fallback to environment variables if credentials_py.py is not present
-    connection_config = {
+connection_config = {
         "host": os.environ.get("DB_HOST"),
         "user": os.environ.get("DB_USER"),
         "password": os.environ.get("DB_PASSWORD"),

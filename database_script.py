@@ -235,7 +235,7 @@ if st.session_state.selected_config_id:
             key="end_time_input",
         )
 
-        if st.button("Show Filtered Plot"):
+        if st.button("Show for Start-End-Time"):
             sensor_ids = get_sensor_ids(
                 st.session_state.selected_sensors, st.session_state.selected_config_id
             )

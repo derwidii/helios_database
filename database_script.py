@@ -281,54 +281,6 @@ def fetch_actuator_times(config_id, actuator_name="DefaultActuator"):
 
     return df_on["timestamp"].tolist(), df_off["timestamp"].tolist()
 
-actuator_descriptions = {
-    'at_oss_mnv': {
-        'on': 'oxidizer main valve open',
-        'off': 'oxidizer main valve close'
-    },
-    'at_fss_mnv': {
-        'on': 'fuel main valve open',
-        'off': 'fuel main valve close'
-    },
-    'at_oss_prz': {
-        'on': 'oss pressurization open',
-        'off': 'oss pressurization close'
-    },
-    'at_fss_prz': {
-        'on': 'fss pressurization open',
-        'off': 'fss pressurization close'
-    },
-    'at_oss_vnt': {
-        'on': 'oss vent close',
-        'off': 'oss vent open'
-    },
-    'at_fss_vnt': {
-        'on': 'fss vent close',
-        'off': 'fss vent open'
-    },
-    'at_oss_fil': {
-        'on': 'oss fill open',
-        'off': 'oss fill close'
-    },
-    'at_ign_fue': {
-        'on': 'igniter fuel valve open',
-        'off': 'igniter fuel valve close'
-    },
-    'at_ign_oxd': {
-        'on': 'igniter oxidizer valve open',
-        'off': 'igniter oxidizer valve close'
-    },
-    'at_ign_spk': {
-        'on': 'spark plug on',
-        'off': 'spark plug off'
-    },
-    'at_eng_led': {
-        'on': 'led on',
-        'off': 'led off'
-    }
-}
-
-
 
 # Streamlit Interface Setup
 st.image(
@@ -352,31 +304,35 @@ with tabs[0] as tab1:
             on_change=update_time_range,  # This triggers the callback to update start and end times
         )
 
-        selected_config_id = selected_config_id_date.split()[0]  # Assuming config ID and date are separated by a space
-        if selected_config_id:
-            sensor_options = get_sensors_with_data(selected_config_id)
-            selected_sensors = st.multiselect("Select Sensors:", sensor_options["name"], key="sensor_select")
+        if st.session_state.selected_config_id:
+            sensor_options = get_sensors_with_data(st.session_state.selected_config_id)
+            selected_sensors = st.multiselect(
+                "Select Sensors:", sensor_options["name"], key="sensor_select"
+            )
             st.session_state.selected_sensors = selected_sensors
 
             if selected_sensors:
                 st.session_state["start_time"] = st.text_input(
                     "Start Time (YYYY-MM-DD HH:MM:SS)",
-                    value=st.session_state.get("start_time", ""),
-                    key="start_time_input"
+                    value=st.session_state["start_time"],
+                    key="start_time_input",
                 )
                 st.session_state["end_time"] = st.text_input(
                     "End Time (YYYY-MM-DD HH:MM:SS)",
-                    value=st.session_state.get("end_time", ""),
-                    key="end_time_input"
+                    value=st.session_state["end_time"],
+                    key="end_time_input",
                 )
 
                 if st.button("Show for Start-End-Time"):
-                    sensor_ids = get_sensor_ids(selected_sensors, selected_config_id)
+                    sensor_ids = get_sensor_ids(
+                        st.session_state.selected_sensors,
+                        st.session_state.selected_config_id,
+                    )
                     df_filtered = get_sensor_values_with_ma_for_multiple_sensors(
                         sensor_ids,
-                        selected_sensors,
+                        st.session_state.selected_sensors,
                         st.session_state["start_time"],
-                        st.session_state["end_time"]
+                        st.session_state["end_time"],
                     )
 
                     if not df_filtered.empty:
@@ -386,17 +342,11 @@ with tabs[0] as tab1:
                             y="value_ma",
                             color="sensor_name",
                             title="Filtered Sensor Data",
-                            labels={"value_ma": "Sensor Value (Moving Avg)", "timestamp": "Timestamp"}
+                            labels={
+                                "value_ma": "Sensor Value (Moving Avg)",
+                                "timestamp": "Timestamp",
+                            },
                         )
-
-                        # Fetch and plot actuator events as vertical lines
-                        for actuator, description in actuator_descriptions.items():
-                            on_times, off_times = fetch_actuator_times(selected_config_id, actuator_name=actuator)
-                            for time in on_times:
-                                fig.add_vline(x=time, line_dash="dash", line_color="green", annotation_text=description['on'], annotation_position="top left")
-                            for time in off_times:
-                                fig.add_vline(x=time, line_dash="dot", line_color="red", annotation_text=description['off'], annotation_position="bottom right")
-
                         st.plotly_chart(fig, use_container_width=True)
                     else:
                         st.error("No data found for the selected range.")
@@ -448,4 +398,3 @@ with tabs[1] as tab2:
             st.error("No configuration IDs found for the selected sensor.")
     else:
         st.error("No sensors found.")
-

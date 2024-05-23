@@ -7,6 +7,10 @@ from datetime import datetime, timedelta
 from io import StringIO
 import os
 
+# DATBASE FUNCTION DEFINITIONS 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# database credentials are stored in environmental variables
 connection_config = {
     "host": st.secrets["DB_HOST"],
     "user": st.secrets["DB_USER"],
@@ -28,10 +32,10 @@ if "end_time" not in st.session_state:
     st.session_state["end_time"] = ""
 
 if "show_plot" not in st.session_state:
-    st.session_state["show_plot"] = False  # Flag to control plot rendering
+    st.session_state["show_plot"] = False  
 
 
-# Function to Fetch Data from the Database
+# Function to Fetch Data from the Database in general
 @st.cache_data(hash_funcs={connect: id}, show_spinner=False)
 def fetch_data(query):
     """Fetch data from the database based on the SQL query."""
@@ -43,9 +47,9 @@ def fetch_data(query):
         return pd.DataFrame()
 
 
+# Function to get sensor values for specific time range, this function is only needed when we specified a certain start and end time
 @st.cache_data(hash_funcs={connect: id}, show_spinner=False)
 def get_sensor_values_time_range(sensor_id, start_time, end_time):
-    """Fetch sensor values for a specific sensor_id within a specified time range."""
     query = f"""
     SELECT value, timestamp
     FROM sensor_values
@@ -56,7 +60,7 @@ def get_sensor_values_time_range(sensor_id, start_time, end_time):
     return df
 
 
-# Function to Fetch Distinct Config IDs
+# Function to Fetch Config IDs to show them in the dropdown menu
 def get_config_ids_with_dates():
     """Fetch distinct config IDs with dates."""
     query = "SELECT config_id, date FROM tests ORDER BY date DESC;"
@@ -70,10 +74,9 @@ def get_config_ids_with_dates():
     return df
 
 
+#Function to fetch time range for a specific test
 def get_test_time_range(config_id):
     """Fetch the start and end times for a given test configuration."""
-    # This query should be adapted to your database schema
-    # Assuming 'sensor_values' has the necessary timestamps for simplicity
     query = f"""
     SELECT MIN(timestamp) AS start_time, MAX(timestamp) AS end_time
     FROM sensor_values
@@ -82,7 +85,7 @@ def get_test_time_range(config_id):
     """
     df = fetch_data(query)
     if not df.empty:
-        # Convert timestamps to your desired format
+        # Convert timestamps
         start_time = pd.to_datetime(df.iloc[0]["start_time"], unit="s").strftime(
             "%Y-%m-%d %H:%M:%S"
         )
@@ -94,9 +97,8 @@ def get_test_time_range(config_id):
         return "", ""
 
 
-# Function to Fetch Distinct Sensor Names
+# Function to Fetch Sensor Names for a specific test  
 def get_sensors_with_data(config_id):
-    """Fetch distinct sensor names that have data for the given config_id."""
     query = f"""
     SELECT DISTINCT sensors.name 
     FROM sensors
@@ -106,16 +108,15 @@ def get_sensors_with_data(config_id):
     return fetch_data(query)
 
 
+# Function to get sensor names to show them in the dropdown menu
 def get_distinct_sensor_names():
     """Fetch distinct sensor names from the database."""
     query = "SELECT DISTINCT name FROM sensors;"
     return fetch_data(query)
 
 
-# Function to Fetch Sensor ID
 # Function to Fetch Sensor IDs
 def get_sensor_ids(sensor_names, config_id):
-    """Fetch the sensor_ids for the selected sensor names and config_id."""
     sensor_ids = []
     for sensor_name in sensor_names:
         query = f"""
@@ -128,8 +129,7 @@ def get_sensor_ids(sensor_names, config_id):
     return sensor_ids
 
 
-# Function to Fetch Sensor Values
-# This function remains mostly the same, but you might want to include the sensor name in the DataFrame for clarity
+# Function to Fetch Sensor Values for multiple sensors so that eventually we can plot all in one plot
 def get_sensor_values_with_ma_for_multiple_sensors(
     sensor_ids, sensor_names, start_time=None, end_time=None
 ):
@@ -145,9 +145,8 @@ def get_sensor_values_with_ma_for_multiple_sensors(
             dfs.append(df)
     return pd.concat(dfs)
 
-
+# Function to fetch all sensor values for a specific sensor_id
 def get_sensor_values(sensor_id):
-    """Fetch all sensor values for a specific sensor_id."""
     query = f"""
     SELECT value, timestamp
     FROM sensor_values
@@ -160,23 +159,22 @@ def get_sensor_values(sensor_id):
         )  # Convert timestamps to datetime objects
     return df
 
-
+# Function to convert dataframe into csv file so that data can be downloaded
+# ATTENTION: atm we don't really use this option yet, we don't have the option implemented to download stuff, but i'm planning to implement this again
 def convert_df_to_csv(df):
-    """Convert dataframe to CSV string."""
     csv = StringIO()
     df.to_csv(csv, index=False)
     csv.seek(0)
     return csv.getvalue()
 
 
-# Function to Calculate Moving Average
+# Function to Calculate Moving Average, change window if  you want to adapt how many values should be taken in the moving average
 @st.cache_data
 def calculate_moving_average(df, window=30):
-    """Calculate the moving average of the 'value' column, using a specified window size."""
     df["value_ma"] = df["value"].rolling(window=window).mean()
     df["value_ma"] = df["value_ma"].fillna(
         df["value"]
-    )  # Replace NA values with the original values for the initial window
+    )
     return df
 
 
@@ -209,12 +207,10 @@ def get_config_ids_for_sensor_with_dates(sensor_name):
     return df
 
 
+# Function to fetch data for the same sensor but accross multiple test
 def get_sensor_data_for_multiple_tests(sensor_name, config_ids):
-    """Retrieve sensor data for a given sensor across multiple configurations/tests."""
     dfs = []
     min_timestamp = None  # To track the earliest timestamp across all tests
-
-    # First, collect all data to find the minimum timestamp
     for config_id in config_ids:
         query = f"""
         SELECT sensor_values.value, sensor_values.timestamp, '{config_id}' AS config_id
@@ -234,7 +230,6 @@ def get_sensor_data_for_multiple_tests(sensor_name, config_ids):
     if dfs:
         normalized_dfs = []
         for df in dfs:
-            # Shift timestamps so that each test starts at the same point
             df["normalized_timestamp"] = (
                 df["timestamp"] - df["timestamp"].min()
             ) / timedelta(minutes=1)
@@ -243,9 +238,8 @@ def get_sensor_data_for_multiple_tests(sensor_name, config_ids):
     else:
         return pd.DataFrame()
 
-
+# this function here is needed so that the time range is updated again when a new test is selected
 def update_time_range():
-    """Callback to update start and end times when a new test is selected."""
     selected_config_id_date = st.session_state["config_id_select"]
     st.session_state.selected_config_id = selected_config_id_date.split(" - ")[0]
 
@@ -283,6 +277,7 @@ def fetch_actuator_times(config_id, actuator_name="DefaultActuator"):
 
 
 # Streamlit Interface Setup
+#---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 st.image(
     "https://raw.githubusercontent.com/derwidii/helios_database/main/HELIOS.png",
     width=100,
@@ -301,7 +296,7 @@ with tabs[0] as tab1:
             "Select a Config ID with Date:",
             config_id_date_options["config_id_date"],
             key="config_id_select",
-            on_change=update_time_range,  # This triggers the callback to update start and end times
+            on_change=update_time_range,  # important so that when we change the test the timerange is updated again
         )
 
         if st.session_state.selected_config_id:
@@ -361,7 +356,7 @@ with tabs[1] as tab2:
             key="sensor_test_comparison_select",
         )
 
-        # Fetch all config IDs with dates where the selected sensor is available
+        # fetch here all config ids for sesnors with dates
         config_date_options = get_config_ids_for_sensor_with_dates(selected_sensor)
         if not config_date_options.empty:
             selected_config_dates = st.multiselect(

@@ -57,7 +57,8 @@ def get_sensor_values_time_range(sensor_id, start_time, end_time):
     query = f"""
     SELECT value, timestamp
     FROM sensor_values
-    WHERE sensor_id = '{sensor_id}' AND timestamp BETWEEN UNIX_TIMESTAMP('{start_time}') AND UNIX_TIMESTAMP('{end_time}');
+    WHERE sensor_id = '{sensor_id}' AND timestamp BETWEEN UNIX_TIMESTAMP('{start_time}') AND UNIX_TIMESTAMP('{end_time}')
+    ORDER BY timestamp;
     """
     df = fetch_data(query)
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")  # Convert to datetime
@@ -155,7 +156,8 @@ def get_sensor_values(sensor_id):
     query = f"""
     SELECT value, timestamp
     FROM sensor_values
-    WHERE sensor_id = '{sensor_id}';
+    WHERE sensor_id = '{sensor_id}'
+    ORDER BY timestamp;
     """
     df = fetch_data(query)
     if not df.empty:
